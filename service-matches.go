@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -23,17 +22,8 @@ type MatchListCall struct {
 }
 
 type MatchList struct {
-	Matches []Match
-}
-
-func (m *MatchList) UnmarshalJSON(b []byte) error {
-	var match Match
-	if err := json.Unmarshal(b, &match); err != nil {
-		return err
-	}
-	fmt.Println(match)
-	m.Matches = append(m.Matches, match)
-	return nil
+	Matches  []Match
+	Response *http.Response
 }
 
 func NewMatchesService(s *Service) *MatchesService {
@@ -110,11 +100,10 @@ func (c *MatchListCall) ExcludePlayers(excludePlayers bool) *MatchListCall {
 func (c *MatchListCall) Do() (*MatchList, error) {
 	resp, err := c.doRequest()
 	if err != nil {
-		log.Fatalf("Error from doRequest(): %v", err)
 		return nil, err
 	}
 
-	var matchList MatchList
+	var matchList []Match
 
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -122,14 +111,17 @@ func (c *MatchListCall) Do() (*MatchList, error) {
 	}
 	defer resp.Body.Close()
 
-	log.Printf("Body: %s", b)
-
 	err = json.Unmarshal(b, &matchList)
 	if err != nil {
 		return nil, err
 	}
 
-	return &matchList, nil
+	matchListResult := &MatchList{
+		Matches:  matchList,
+		Response: resp,
+	}
+
+	return matchListResult, nil
 }
 
 func (c *MatchListCall) doRequest() (*http.Response, error) {
