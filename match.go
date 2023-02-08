@@ -55,8 +55,15 @@ type Match struct {
 	AwayForfeit           bool   `json:"isAwayForfeit"`
 	Complete              bool   `json:"isComplete"`
 	TicketLink            string `json:"mlrTicketLink"`
-	Broadcasters          string `json:"broadcasters"`
+	BroadcastersString    string `json:"broadcasters"`
+	Broadcasters          []Broadcaster
 
 	// Not Implemented
 	//MetricDTOs
+}
+
+func (m *Match) ParseBroadcasters() {
+	for _, broadcaster := range strings.Split(m.BroadcastersString, ",") {
+		m.Broadcasters = append(m.Broadcasters, Broadcaster{Name: strings.TrimSpace(broadcaster)})
+	}
 }

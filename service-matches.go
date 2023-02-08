@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -100,28 +101,32 @@ func (c *MatchListCall) ExcludePlayers(excludePlayers bool) *MatchListCall {
 func (c *MatchListCall) Do() (*MatchList, error) {
 	resp, err := c.doRequest()
 	if err != nil {
+		log.Fatalf("error from request: %v", err)
 		return nil, err
 	}
 
-	var matchList []Match
+	var matches []Match
 
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
+		log.Fatalf("error reading response body: %v", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	err = json.Unmarshal(b, &matchList)
+	err = json.Unmarshal(b, &matches)
 	if err != nil {
+		log.Fatalf("error unmarshaling matchlist: %v", err)
 		return nil, err
 	}
 
-	matchListResult := &MatchList{
-		Matches:  matchList,
-		Response: resp,
+	var matchList MatchList
+	for _, match := range matches {
+		match.ParseBroadcasters()
+		matchList.Matches = append(matchList.Matches, match)
 	}
 
-	return matchListResult, nil
+	return &matchList, nil
 }
 
 func (c *MatchListCall) doRequest() (*http.Response, error) {
@@ -135,11 +140,11 @@ func (c *MatchListCall) doRequest() (*http.Response, error) {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
 	var body io.Reader = nil
-	urls := SearchMatches
-	urls += "?" + c.urlParams_.Encode()
+	url := SearchMatches + "?" + c.urlParams_.Encode()
 
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", url, body)
 	if err != nil {
+		log.Fatalf("error calling url %s: %v", url, err)
 		return nil, err
 	}
 	req.Header = reqHeaders
